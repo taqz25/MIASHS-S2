@@ -15,24 +15,26 @@ DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
 class BasicAgent:
     def __init__(self):
         print("BasicAgent initialized.")
-        # Load the French GPT-2 text-generation pipeline once
-        self.generator = pipeline("text-generation", model="openai-community/gpt2-french")
+        # Load a question-answer-friendly model using the text2text-generation pipeline
+        self.generator = pipeline("text2text-generation", model="cmarkea/bloomz-1b1-french")
 
     def __call__(self, question: str) -> str:
         print(f"Agent received question (first 50 chars): {question[:50]}...")
-        # Use the pipeline to generate an answer
         try:
-            outputs = self.generator(question, max_new_tokens=60, num_return_sequences=1)
-            # outputs is a list of dicts with 'generated_text'
-            answer = outputs[0]['generated_text']
-            # Optionally, strip question from the start if gpt2 echoes prompt
-            if answer.lower().startswith(question.lower()):
-                answer = answer[len(question):].lstrip()
-            print(f"Agent generated answer: {answer}")
+            prompt = f"Réponds en une phrase à la question suivante : {question}"
+            print(f"Generated prompt: {prompt}")
+            outputs = self.generator(prompt, max_new_tokens=60)
+            print(f"Raw model output: {outputs}")
+            if not outputs or 'generated_text' not in outputs[0]:
+                raise ValueError("Output format incorrect or missing 'generated_text'")
+            answer = outputs[0]['generated_text'].strip()
+            print(f"Final parsed answer: {answer}")
             return answer
         except Exception as e:
-            print(f"Error generating answer with GPT-2: {e}")
-            return f"[Error generating answer: {e}]"
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Full error traceback:\n{error_details}")
+            return "Je ne sais pas répondre à cette question."
 
 def manual_run(question):
     agent = BasicAgent()
