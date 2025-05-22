@@ -15,8 +15,21 @@ DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
 class BasicAgent:
     def __init__(self):
         print("BasicAgent initialized.")
-        # Load a question-answer-friendly model using the text2text-generation pipeline
-        self.generator = pipeline("text2text-generation", model="bigscience/bloom-560m")
+        # Load a question-answer-friendly model using the text-generation pipeline
+        self.generator = pipeline("text-generation", model="bigscience/bloom-560m", return_full_text=False)
+
+    def clean_repetitions(self, text: str) -> str:
+        import re
+        # Normaliser les phrases : enlever espaces multiples et mettre en minuscule
+        sentences = re.split(r'[.?!]', text)
+        seen = set()
+        filtered = []
+        for sentence in sentences:
+            normalized = ' '.join(sentence.lower().split())
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                filtered.append(sentence.strip())
+        return '. '.join(filtered).strip() + '.'
 
     def __call__(self, question: str) -> str:
         print(f"Agent received question (first 50 chars): {question[:50]}...")
@@ -26,8 +39,12 @@ class BasicAgent:
             outputs = self.generator(prompt, max_new_tokens=60)
             print(f"Raw model output: {outputs}")
             if not outputs or 'generated_text' not in outputs[0]:
-                raise ValueError("Output format incorrect or missing 'generated_text'")
-            answer = outputs[0]['generated_text'].strip()
+                answer = outputs[0].get('text', '').strip()
+                if not answer:
+                    raise ValueError("Output format incorrect or missing text.")
+            else:
+                answer = outputs[0]['generated_text'].strip()
+            answer = self.clean_repetitions(answer)
             print(f"Final parsed answer: {answer}")
             return answer
         except Exception as e:
