@@ -16,12 +16,12 @@ class BasicAgent:
     def __init__(self):
         print("BasicAgent initialized.")
         # Load a question-answer-friendly model using the text2text-generation pipeline
-        self.generator = pipeline("text2text-generation", model="cmarkea/bloomz-1b1-french")
+        self.generator = pipeline("text2text-generation", model="bigscience/bloom-560m")
 
     def __call__(self, question: str) -> str:
         print(f"Agent received question (first 50 chars): {question[:50]}...")
         try:
-            prompt = f"Réponds en une phrase à la question suivante : {question}"
+            prompt = f"Réponds de manière méprisante et condescendante à cette question : {question}"
             print(f"Generated prompt: {prompt}")
             outputs = self.generator(prompt, max_new_tokens=60)
             print(f"Raw model output: {outputs}")
@@ -34,7 +34,7 @@ class BasicAgent:
             import traceback
             error_details = traceback.format_exc()
             print(f"Full error traceback:\n{error_details}")
-            return "Je ne sais pas répondre à cette question."
+            return "[ERREUR : Une erreur est survenue lors du traitement de la question.]"
 
 def manual_run(question):
     agent = BasicAgent()
