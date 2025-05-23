@@ -15,28 +15,31 @@ DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
 class BasicAgent:
     def __init__(self):
         print("BasicAgent initialized.")
+        # Mémoire locale pour améliorer le contexte
+        self.history = []  # Mémoire locale pour améliorer le contexte
         # Load a question-answer-friendly model using the text-generation pipeline
-        self.generator = pipeline("text-generation", model="bigscience/bloom-560m", return_full_text=False)
+        self.generator = pipeline("text-generation", model="Salesforce/codegen-350M-mono", return_full_text=False)
 
     def clean_repetitions(self, text: str) -> str:
         import re
-        # Normaliser les phrases : enlever espaces multiples et mettre en minuscule
-        sentences = re.split(r'[.?!]', text)
+        # Supprimer les répétitions mot à mot
+        lines = text.strip().splitlines()
         seen = set()
-        filtered = []
-        for sentence in sentences:
-            normalized = ' '.join(sentence.lower().split())
-            if normalized and normalized not in seen:
-                seen.add(normalized)
-                filtered.append(sentence.strip())
-        return '. '.join(filtered).strip() + '.'
+        result = []
+        for line in lines:
+            clean_line = line.strip()
+            if clean_line and clean_line.lower() not in seen:
+                seen.add(clean_line.lower())
+                result.append(clean_line)
+        return '\n'.join(result)
 
     def __call__(self, question: str) -> str:
         print(f"Agent received question (first 50 chars): {question[:50]}...")
         try:
-            prompt = f"Réponds de manière méprisante et condescendante à cette question : {question}"
+            context = "\n".join(self.history[-3:])  # Utilise les 3 derniers échanges
+            prompt = f"# Consigne : {question}\n# Écris uniquement du code Python sans répétition inutile :\n"
             print(f"Generated prompt: {prompt}")
-            outputs = self.generator(prompt, max_new_tokens=60)
+            outputs = self.generator(prompt, max_new_tokens=512)
             print(f"Raw model output: {outputs}")
             if not outputs or 'generated_text' not in outputs[0]:
                 answer = outputs[0].get('text', '').strip()
@@ -44,9 +47,20 @@ class BasicAgent:
                     raise ValueError("Output format incorrect or missing text.")
             else:
                 answer = outputs[0]['generated_text'].strip()
+                answer = answer.split('\n\n')[0].strip()
+                # Sépare le texte à la première occurrence de 'Code Python :'
+                import re
+                if 'Code Python :' in answer:
+                    answer = answer.split('Code Python :', 1)[-1].strip()
+
+                # Extra : capturer uniquement le premier bloc de code Python si présent
+                code_blocks = re.findall(r'```(?:python)?\n(.*?)```', answer, re.DOTALL)
+                if code_blocks:
+                    answer = code_blocks[0].strip()
+            self.history.append(f"Consigne : {question}\nCode Python : {answer}")
             answer = self.clean_repetitions(answer)
             print(f"Final parsed answer: {answer}")
-            return answer
+            return f"Réponse :\n{answer}"
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
