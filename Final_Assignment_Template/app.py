@@ -39,7 +39,7 @@ class BasicAgent:
             context = "\n".join(self.history[-3:])  # Utilise les 3 derniers échanges
             prompt = f"# Consigne : {question}\n# Écris uniquement du code Python sans répétition inutile :\n"
             print(f"Generated prompt: {prompt}")
-            outputs = self.generator(prompt, max_new_tokens=512)
+            outputs = self.generator(prompt, max_new_tokens=2048)
             print(f"Raw model output: {outputs}")
             if not outputs or 'generated_text' not in outputs[0]:
                 answer = outputs[0].get('text', '').strip()
